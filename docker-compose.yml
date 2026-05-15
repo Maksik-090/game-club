@@ -1,0 +1,41 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: game-club-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD:  root  # поменяй на безопасный пароль
+      MYSQL_DATABASE: gameclub
+      MYSQL_USER: gameuser
+      MYSQL_PASSWORD: gamepass       # пароль для обычного пользователя
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-u", "root", "-prootpassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+          context: ./backend
+          dockerfile: Dockerfile
+    container_name: game-club-backend
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_USER: user
+      DB_PASSWORD: userpassword
+      DB_NAME: gameclub
+    ports:
+      - "3000:3000"
+    command: >
+      sh -c "npm install && npm start"
+
+volumes:
+  db_data:

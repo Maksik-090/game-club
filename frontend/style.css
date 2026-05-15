@@ -1,0 +1,17 @@
+body {
+  background: #121212;
+  color: white;
+  font-family: Arial;
+}
+
+input, textarea {
+  display: block;
+  margin: 10px 0;
+  width: 300px;
+}
+
+.post {
+  border: 1px solid gray;
+  padding: 10px;
+  margin: 10px;
+}
