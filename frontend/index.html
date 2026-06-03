@@ -1,22 +1,23 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-  <title>Game Club</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Клуб любителей видеоигр</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<h1>🎮 Game Club</h1>
-
-<div>
-  <input id="title" placeholder="Title">
-  <input id="link" placeholder="Link">
-  <textarea id="content" placeholder="Content"></textarea>
-  <button onclick="addPost()">Добавить</button>
-</div>
-
-<div id="posts"></div>
-
-<script src="script.js"></script>
+  <header>
+    <div class="logo">🎮 GameClub</div>
+    <nav id="mainNav">
+      <a href="#home" class="active">Новости</a>
+      <a href="#login" id="navLogin">Войти</a>
+      <a href="#register" id="navRegister">Регистрация</a>
+      <a href="#admin" id="navAdmin" class="hidden">Админка</a>
+      <button id="btnLogout" class="hidden">Выйти</button>
+    </nav>
+  </header>
+  <main id="app"></main>
+  <script src="script.js"></script>
 </body>
 </html>

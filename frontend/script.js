@@ -1,47 +1,498 @@
-const API = "http://localhost:3000";
+const API_BASE = 'http://localhost:3000';
 
-async function loadPosts() {
-  const res = await fetch(API + "/posts");
-  const posts = await res.json();
+let currentUser = null;
+let authToken = null;
 
-  const container = document.getElementById("posts");
-  container.innerHTML = "";
+// Восстановление сессии из localStorage
+if (localStorage.getItem('authToken')) {
+  authToken = localStorage.getItem('authToken');
+  try {
+    const payload = JSON.parse(atob(authToken.split('.')[1]));
+    currentUser = { id: payload.id, role: payload.role, username: 'User' };
+  } catch (e) {}
+}
 
-  posts.forEach(p => {
-    const div = document.createElement("div");
-    div.className = "post";
+// ---------- Универсальная функция запросов ----------
+async function api(url, method = 'GET', body = null, isFormData = false) {
+  const headers = {};
+  if (!isFormData) headers['Content-Type'] = 'application/json';
+  if (authToken) headers['Authorization'] = authToken;
 
-    div.innerHTML = `
-      <h3>${p.title}</h3>
-      <p>${p.content}</p>
-      <a href="${p.link}" target="_blank" onclick="clickPost(${p.id})">Перейти</a>
+  const options = { method, headers };
+  if (body) options.body = isFormData ? body : JSON.stringify(body);
+
+  const res = await fetch(`${API_BASE}${url}`, options);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Ошибка ${res.status}`);
+  }
+  const contentType = res.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) return await res.json();
+  return null;
+}
+
+// ---------- Навигация ----------
+function updateNav() {
+  const navLogin = document.getElementById('navLogin');
+  const navRegister = document.getElementById('navRegister');
+  const navAdmin = document.getElementById('navAdmin');
+  const btnLogout = document.getElementById('btnLogout');
+  if (currentUser) {
+    navLogin.classList.add('hidden');
+    navRegister.classList.add('hidden');
+    btnLogout.classList.remove('hidden');
+    navAdmin.classList.toggle('hidden', currentUser.role !== 'admin');
+  } else {
+    navLogin.classList.remove('hidden');
+    navRegister.classList.remove('hidden');
+    btnLogout.classList.add('hidden');
+    navAdmin.classList.add('hidden');
+  }
+}
+
+function logout() {
+  localStorage.removeItem('authToken');
+  authToken = null;
+  currentUser = null;
+  updateNav();
+  window.location.hash = '#home';
+}
+
+document.getElementById('btnLogout').addEventListener('click', logout);
+updateNav();
+
+// ---------- Роутинг ----------
+window.addEventListener('hashchange', renderPage);
+window.addEventListener('load', renderPage);
+
+function renderPage() {
+  const hash = window.location.hash.slice(1) || 'home';
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+  document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+  const activeLink = document.querySelector(`nav a[href="#${hash.split('/')[0]}"]`);
+  if (activeLink) activeLink.classList.add('active');
+
+  if (hash === 'home') renderHome(app);
+  else if (hash.startsWith('post/')) renderPost(app, hash.split('/')[1]);
+  else if (hash === 'login') renderLogin(app);
+  else if (hash === 'register') renderRegister(app);
+  else if (hash === 'admin') renderAdmin(app);
+  else app.innerHTML = '<h2>Страница не найдена</h2>';
+}
+
+// ---------- Главная страница (список новостей) ----------
+async function renderHome(container) {
+  container.innerHTML = '<h2>Новости клуба</h2><div id="postsList">Загрузка...</div>';
+  try {
+    const posts = await api('/posts');
+    const list = document.getElementById('postsList');
+    if (!posts || posts.length === 0) {
+      list.innerHTML = '<p>Пока нет новостей.</p>';
+      return;
+    }
+    list.innerHTML = posts.map(p => {
+      const imageHtml = p.image
+        ? `<img src="${API_BASE}/uploads/${p.image}" style="max-width:100%; border-radius:8px; margin-bottom:1rem;" alt="Изображение">`
+        : '';
+      return `
+        <div class="card">
+          ${imageHtml}
+          <a href="#post/${p.id}" class="post-title">${escapeHtml(p.title)}</a>
+          <div class="post-meta">${escapeHtml(p.author_name || 'Автор #' + p.author_id)} • ${new Date(p.created_at).toLocaleString()}</div>
+          <p>${escapeHtml(p.content.substring(0, 200))}${p.content.length > 200 ? '...' : ''}</p>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    container.innerHTML += `<p class="error-message">Ошибка: ${escapeHtml(err.message)}</p>`;
+  }
+}
+
+// ---------- Страница одной новости + комментарии ----------
+async function renderPost(container, postId) {
+  container.innerHTML = '<p>Загрузка...</p>';
+  try {
+    // Параллельная загрузка поста и тегов
+    const [post, tags] = await Promise.all([
+      api(`/posts/${postId}`),
+      api(`/posts/${postId}/tags`)
+    ]);
+    
+    if (!post) throw new Error("Новость не найдена");
+
+    const imageHtml = post.image
+      ? `<img src="${API_BASE}/uploads/${post.image}" style="max-width:100%; border-radius:12px; margin-bottom:1.5rem;" alt="Изображение">`
+      : '';
+    const tagsHtml = tags && tags.length
+      ? `<div class="tags" style="margin-bottom:1rem;">${tags.map(t => `<span class="tag" style="background:var(--primary); padding:2px 8px; border-radius:4px; margin-right:6px;">${escapeHtml(t.name)}</span>`).join('')}</div>`
+      : '';
+    container.innerHTML = `
+      <div class="card">
+        ${imageHtml}
+        <h2>${escapeHtml(post.title)}</h2>
+        ${tagsHtml}
+        <div class="post-meta">Автор: ${escapeHtml(post.author_name || 'Автор #' + post.author_id)} • ${new Date(post.created_at).toLocaleString()}</div>
+        <p style="white-space: pre-wrap;">${escapeHtml(post.content)}</p>
+      </div>
+      <div class="comments-section">
+        <h3>Комментарии</h3>
+        <div id="commentsList">Загрузка...</div>
+        ${currentUser ? `
+          <form id="commentForm" style="margin-top:1rem;">
+            <textarea id="commentContent" placeholder="Ваш комментарий..." required></textarea>
+            <button type="submit" class="btn-primary">Отправить</button>
+          </form>
+        ` : '<p><a href="#login">Войдите</a>, чтобы оставить комментарий.</p>'}
+      </div>
     `;
+    loadComments(postId);
+    document.getElementById('commentForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const content = document.getElementById('commentContent').value.trim();
+      if (!content) return;
+      try {
+        await api('/comments', 'POST', { content, post_id: postId });
+        document.getElementById('commentContent').value = '';
+        loadComments(postId);
+      } catch (err) { alert('Ошибка: ' + err.message); }
+    });
+  } catch (err) {
+    container.innerHTML = `<p class="error-message">Ошибка: ${escapeHtml(err.message)}</p>`;
+  }
+}
 
-    viewPost(p.id);
-    container.appendChild(div);
+async function loadComments(postId) {
+  const list = document.getElementById('commentsList');
+  if (!list) return;
+  try {
+    const comments = await api(`/comments/${postId}`);
+    if (!comments || comments.length === 0) {
+      list.innerHTML = '<p>Комментариев пока нет.</p>';
+      return;
+    }
+    list.innerHTML = comments.map(c => `
+      <div class="comment" data-id="${c.id}">
+        <div class="comment-header">
+          <strong>${escapeHtml(c.username || 'User #' + c.user_id)}</strong>
+          <span>${new Date(c.created_at).toLocaleString()}</span>
+        </div>
+        <div class="comment-content">${escapeHtml(c.content)}</div>
+        ${(currentUser && (currentUser.id === c.user_id || currentUser.role === 'admin')) ? `
+          <div class="comment-actions">
+            <button class="edit-comment" data-id="${c.id}">✏️</button>
+            <button class="delete-comment" data-id="${c.id}">🗑️</button>
+          </div>` : ''}
+      </div>
+    `).join('');
+
+    list.querySelectorAll('.delete-comment').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Удалить комментарий?')) return;
+        await api(`/comments/${btn.dataset.id}`, 'DELETE');
+        loadComments(postId);
+      });
+    });
+    list.querySelectorAll('.edit-comment').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const commentDiv = btn.closest('.comment');
+        const contentDiv = commentDiv.querySelector('.comment-content');
+        const oldContent = contentDiv.textContent;
+        const textarea = document.createElement('textarea');
+        textarea.value = oldContent;
+        contentDiv.replaceWith(textarea);
+        const saveBtn = document.createElement('button');
+        saveBtn.textContent = 'Сохранить';
+        saveBtn.className = 'btn-primary';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Отмена';
+        cancelBtn.className = 'btn-secondary';
+        commentDiv.querySelector('.comment-actions').innerHTML = '';
+        commentDiv.querySelector('.comment-actions').append(saveBtn, cancelBtn);
+        saveBtn.addEventListener('click', async () => {
+          const newContent = textarea.value.trim();
+          if (!newContent) return;
+          await api(`/comments/${btn.dataset.id}`, 'PUT', { content: newContent });
+          loadComments(postId);
+        });
+        cancelBtn.addEventListener('click', () => loadComments(postId));
+      });
+    });
+  } catch (err) {
+    list.innerHTML = `<p class="error-message">Ошибка загрузки комментариев</p>`;
+  }
+}
+
+// ---------- Авторизация ----------
+function renderLogin(container) {
+  container.innerHTML = `
+    <div class="card" style="max-width:400px;margin:2rem auto;">
+      <h2>Вход</h2>
+      <form id="loginForm">
+        <input type="email" id="loginEmail" placeholder="Email" required>
+        <input type="password" id="loginPassword" placeholder="Пароль" required>
+        <button type="submit" class="btn-primary" style="width:100%">Войти</button>
+      </form>
+      <p style="text-align:center;margin-top:1rem;">Нет аккаунта? <a href="#register">Зарегистрироваться</a></p>
+      <div id="loginError" class="error-message"></div>
+    </div>
+  `;
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    try {
+      const data = await api('/auth/login', 'POST', { email, password });
+      authToken = data.token;
+      const payload = JSON.parse(atob(authToken.split('.')[1]));
+      currentUser = { id: payload.id, role: payload.role };
+      localStorage.setItem('authToken', authToken);
+      updateNav();
+      window.location.hash = '#home';
+    } catch (err) {
+      document.getElementById('loginError').textContent = err.message;
+    }
   });
 }
 
-async function addPost() {
-  await fetch(API + "/posts", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      title: title.value,
-      content: content.value,
-      link: link.value
-    })
+function renderRegister(container) {
+  container.innerHTML = `
+    <div class="card" style="max-width:400px;margin:2rem auto;">
+      <h2>Регистрация</h2>
+      <form id="registerForm">
+        <input type="text" id="regUsername" placeholder="Логин" required>
+        <input type="email" id="regEmail" placeholder="Email" required>
+        <input type="password" id="regPassword" placeholder="Пароль" required>
+        <button type="submit" class="btn-primary" style="width:100%">Зарегистрироваться</button>
+      </form>
+      <p style="text-align:center;margin-top:1rem;">Уже есть аккаунт? <a href="#login">Войти</a></p>
+      <div id="regError" class="error-message"></div>
+    </div>
+  `;
+  document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('regUsername').value;
+    const email = document.getElementById('regEmail').value;
+    const password = document.getElementById('regPassword').value;
+    try {
+      await api('/auth/register', 'POST', { username, email, password });
+      alert('Регистрация успешна! Теперь войдите.');
+      window.location.hash = '#login';
+    } catch (err) {
+      document.getElementById('regError').textContent = err.message;
+    }
   });
-
-  loadPosts();
 }
 
-function viewPost(id) {
-  fetch(API + "/view/" + id, { method: "POST" });
+// ---------- Админ-панель ----------
+function renderAdmin(container) {
+  if (!currentUser || currentUser.role !== 'admin') {
+    container.innerHTML = '<h2>Доступ запрещён</h2>';
+    return;
+  }
+  container.innerHTML = `
+    <h2>Панель администратора</h2>
+    <div class="admin-tabs">
+      <div class="admin-tab active" data-tab="users">Пользователи</div>
+      <div class="admin-tab" data-tab="posts">Новости</div>
+      <div class="admin-tab" data-tab="tags">Теги</div>
+    </div>
+    <div id="adminContent"></div>
+  `;
+  const tabs = container.querySelectorAll('.admin-tab');
+  const contentDiv = document.getElementById('adminContent');
+  function switchTab(tab) {
+    tabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const tabName = tab.dataset.tab;
+    if (tabName === 'users') loadAdminUsers(contentDiv);
+    else if (tabName === 'posts') loadAdminPosts(contentDiv);
+    else if (tabName === 'tags') loadAdminTags(contentDiv);
+  }
+  tabs.forEach(t => t.addEventListener('click', () => switchTab(t)));
+  switchTab(tabs[0]);
 }
 
-function clickPost(id) {
-  fetch(API + "/click/" + id, { method: "POST" });
+async function loadAdminUsers(container) {
+  container.innerHTML = '<p>Загрузка...</p>';
+  try {
+    const users = await api('/admin/users');
+    container.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><th>ID</th><th>Имя</th><th>Email</th><th>Роль</th><th>Действия</th></tr>
+        ${users.map(u => `
+          <tr>
+            <td>${u.id}</td><td>${escapeHtml(u.username)}</td><td>${escapeHtml(u.email)}</td><td>${u.role}</td>
+            <td>
+              <select class="roleSelect" data-id="${u.id}">
+                <option value="user" ${u.role==='user'?'selected':''}>user</option>
+                <option value="admin" ${u.role==='admin'?'selected':''}>admin</option>
+              </select>
+              <button class="btn-danger delete-user" data-id="${u.id}">Удалить</button>
+            </td>
+          </tr>
+        `).join('')}
+      </table>
+    `;
+    container.querySelectorAll('.delete-user').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Удалить пользователя?')) return;
+        await api(`/admin/users/${btn.dataset.id}`, 'DELETE');
+        loadAdminUsers(container);
+      });
+    });
+    container.querySelectorAll('.roleSelect').forEach(sel => {
+      sel.addEventListener('change', async () => {
+        await api(`/admin/users/${sel.dataset.id}`, 'PATCH', { role: sel.value });
+      });
+    });
+  } catch (err) {
+    container.innerHTML = `<p class="error-message">Ошибка: ${escapeHtml(err.message)}</p>`;
+  }
 }
 
-loadPosts();
+// ---------- Управление постами (с картинками и тегами) ----------
+async function loadAdminPosts(container) {
+  container.innerHTML = '<p>Загрузка...</p>';
+  try {
+    const posts = await api('/posts');
+    container.innerHTML = `
+      <button id="btnCreatePost" class="btn-primary" style="margin-bottom:1rem;">+ Создать новость</button>
+      <div id="postFormContainer" class="hidden"></div>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><th>ID</th><th>Заголовок</th><th>Автор</th><th>Действия</th></tr>
+        ${posts.map(p => `
+          <tr>
+            <td>${p.id}</td><td>${escapeHtml(p.title)}</td><td>${escapeHtml(p.author_name || 'Автор #' + p.author_id)}</td>
+            <td><button class="btn-danger delete-post" data-id="${p.id}">Удалить</button></td>
+          </tr>
+        `).join('')}
+      </table>
+    `;
+    container.querySelectorAll('.delete-post').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Удалить новость?')) return;
+        await api(`/posts/${btn.dataset.id}`, 'DELETE');
+        loadAdminPosts(container);
+      });
+    });
+
+    // Показать/скрыть форму создания
+    document.getElementById('btnCreatePost').addEventListener('click', () => {
+      const formDiv = document.getElementById('postFormContainer');
+      formDiv.classList.toggle('hidden');
+      formDiv.innerHTML = `
+        <form id="createPostForm" enctype="multipart/form-data">
+          <input type="text" id="postTitle" placeholder="Заголовок" required>
+          <textarea id="postContent" placeholder="Текст новости" required></textarea>
+          <input type="file" id="postImage" accept="image/*">
+          <div id="tagsSelection">
+            <p>Теги:</p>
+            <div id="tagsCheckboxes">Загрузка тегов...</div>
+          </div>
+          <button type="submit" class="btn-primary">Опубликовать</button>
+          <button type="button" class="btn-secondary cancel-form">Отмена</button>
+        </form>
+      `;
+      formDiv.querySelector('.cancel-form').addEventListener('click', () => formDiv.classList.add('hidden'));
+
+      // Загружаем теги и вставляем чекбоксы
+      loadTagsForForm();
+
+      // Единственный обработчик отправки формы
+      document.getElementById('createPostForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const title = document.getElementById('postTitle').value;
+        const content = document.getElementById('postContent').value;
+        const imageFile = document.getElementById('postImage').files[0];
+
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('content', content);
+        if (imageFile) formData.append('image', imageFile);
+
+        // Собираем выбранные теги
+        const checkedTags = document.querySelectorAll('input[name="tags"]:checked');
+        const tagIds = Array.from(checkedTags).map(cb => cb.value);
+        if (tagIds.length > 0) {
+          formData.append('tags', JSON.stringify(tagIds));
+        }
+
+        try {
+          const res = await fetch(`${API_BASE}/posts`, {
+            method: 'POST',
+            headers: {
+              'Authorization': authToken
+            },
+            body: formData
+          });
+          if (!res.ok) throw new Error(await res.text());
+          formDiv.classList.add('hidden');
+          loadAdminPosts(container);
+        } catch (err) {
+          alert('Ошибка: ' + err.message);
+        }
+      });
+    });
+  } catch (err) {
+    container.innerHTML = `<p class="error-message">Ошибка: ${escapeHtml(err.message)}</p>`;
+  }
+}
+
+// ---------- Загрузка тегов в форму создания поста ----------
+async function loadTagsForForm() {
+  const container = document.getElementById('tagsCheckboxes');
+  if (!container) return;
+  try {
+    const tags = await api('/admin/tags');
+    if (tags.length === 0) {
+      container.innerHTML = '<p>Нет доступных тегов</p>';
+      return;
+    }
+    container.innerHTML = tags.map(tag => `
+      <label style="display: inline-block; margin-right: 12px;">
+        <input type="checkbox" name="tags" value="${tag.id}"> ${escapeHtml(tag.name)}
+      </label>
+    `).join('');
+  } catch (err) {
+    container.innerHTML = '<p>Ошибка загрузки тегов</p>';
+  }
+}
+
+// ---------- Управление тегами ----------
+async function loadAdminTags(container) {
+  container.innerHTML = '<p>Загрузка...</p>';
+  try {
+    const tags = await api('/admin/tags');
+    container.innerHTML = `
+      <form id="addTagForm" style="display:flex; gap:1rem; margin-bottom:1rem;">
+        <input type="text" id="newTagName" placeholder="Название тега" required>
+        <button type="submit" class="btn-primary">Добавить</button>
+      </form>
+      <ul>
+        ${tags.map(t => `<li>${escapeHtml(t.name)} <button class="btn-danger delete-tag" data-id="${t.id}">Удалить</button></li>`).join('')}
+      </ul>
+    `;
+    document.getElementById('addTagForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('newTagName').value.trim();
+      await api('/admin/tags', 'POST', { name });
+      loadAdminTags(container);
+    });
+    container.querySelectorAll('.delete-tag').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await api(`/admin/tags/${btn.dataset.id}`, 'DELETE');
+        loadAdminTags(container);
+      });
+    });
+  } catch (err) {
+    container.innerHTML = `<p class="error-message">Ошибка: ${escapeHtml(err.message)}</p>`;
+  }
+}
+
+// Экранирование HTML
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
