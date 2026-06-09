@@ -12,7 +12,7 @@ if (localStorage.getItem('authToken')) {
   } catch (e) {}
 }
 
-// ---------- Универсальная функция запросов ----------
+// Универсальная функция запросов 
 async function api(url, method = 'GET', body = null, isFormData = false) {
   const headers = {};
   if (!isFormData) headers['Content-Type'] = 'application/json';
@@ -31,8 +31,9 @@ async function api(url, method = 'GET', body = null, isFormData = false) {
   return null;
 }
 
-// ---------- Навигация ----------
+//  Навигация 
 function updateNav() {
+  document.getElementById('navProfile')?.classList.toggle('hidden', !currentUser);
   const navLogin = document.getElementById('navLogin');
   const navRegister = document.getElementById('navRegister');
   const navAdmin = document.getElementById('navAdmin');
@@ -61,7 +62,7 @@ function logout() {
 document.getElementById('btnLogout').addEventListener('click', logout);
 updateNav();
 
-// ---------- Роутинг ----------
+//  Роутинг 
 window.addEventListener('hashchange', renderPage);
 window.addEventListener('load', renderPage);
 
@@ -77,11 +78,13 @@ function renderPage() {
   else if (hash.startsWith('post/')) renderPost(app, hash.split('/')[1]);
   else if (hash === 'login') renderLogin(app);
   else if (hash === 'register') renderRegister(app);
+  else if (hash === 'profile') renderProfile(app, null);
+  else if (hash.startsWith('profile/')) renderProfile(app, hash.split('/')[1]);
   else if (hash === 'admin') renderAdmin(app);
   else app.innerHTML = '<h2>Страница не найдена</h2>';
 }
 
-// ---------- Главная страница (список новостей) ----------
+//  Главная страница (список новостей) 
 async function renderHome(container) {
   container.innerHTML = '<h2>Новости клуба</h2><div id="postsList">Загрузка...</div>';
   try {
@@ -99,7 +102,13 @@ async function renderHome(container) {
         <div class="card">
           ${imageHtml}
           <a href="#post/${p.id}" class="post-title">${escapeHtml(p.title)}</a>
-          <div class="post-meta">${escapeHtml(p.author_name || 'Автор #' + p.author_id)} • ${new Date(p.created_at).toLocaleString()}</div>
+          <div class="post-meta" style="display:flex; align-items:center; gap:8px;">
+          <a href="#profile/${p.author_id}" style="display:flex; align-items:center; gap:8px; text-decoration:none; color:inherit;"> 
+          ${p.author_avatar ? `<img src="${API_BASE}/uploads/${p.author_avatar}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;">` : '<div style="width:24px;height:24px;border-radius:50%;background:var(--border);"></div>'}
+          <span>${escapeHtml(p.author_name || 'Автор #' + p.author_id)}</span>
+          </a>
+          <span>• ${new Date(p.created_at).toLocaleString()}</span>
+          </div>
           <p>${escapeHtml(p.content.substring(0, 200))}${p.content.length > 200 ? '...' : ''}</p>
         </div>
       `;
@@ -109,7 +118,7 @@ async function renderHome(container) {
   }
 }
 
-// ---------- Страница одной новости + комментарии ----------
+//  Страница одной новости + комментарии 
 async function renderPost(container, postId) {
   container.innerHTML = '<p>Загрузка...</p>';
   try {
@@ -132,7 +141,13 @@ async function renderPost(container, postId) {
         ${imageHtml}
         <h2>${escapeHtml(post.title)}</h2>
         ${tagsHtml}
-        <div class="post-meta">Автор: ${escapeHtml(post.author_name || 'Автор #' + post.author_id)} • ${new Date(post.created_at).toLocaleString()}</div>
+        <div class="post-meta" style="display:flex; align-items:center; gap:8px;"> 
+        <a href="#profile/${post.author_id}" style="display:flex; align-items:center; gap:8px; text-decoration:none; color:inherit;">
+          ${post.author_avatar ? `<img src="${API_BASE}/uploads/${post.author_avatar}" style="width:24px;height:24px;border-radius:50%;">` : ''}
+          <span>Автор: ${escapeHtml(post.author_name || 'Автор #' + post.author_id)}</span>
+        </a>
+        <span>• ${new Date(post.created_at).toLocaleString()}</span>
+        </div>
         <p style="white-space: pre-wrap;">${escapeHtml(post.content)}</p>
       </div>
       <div class="comments-section">
@@ -174,7 +189,12 @@ async function loadComments(postId) {
     list.innerHTML = comments.map(c => `
       <div class="comment" data-id="${c.id}">
         <div class="comment-header">
+          <div style="display:flex; align-items:center; gap:8px;">
+          <a href="#profile/${c.user_id}" style="display:flex; align-items:center; gap:8px; text-decoration:none; color:inherit;">
+          ${c.avatar ? `<img src="${API_BASE}/uploads/${c.avatar}" style="width:20px;height:20px;border-radius:50%;">` : '<div style="width:20px;height:20px;border-radius:50%;background:var(--border);"></div>'}
           <strong>${escapeHtml(c.username || 'User #' + c.user_id)}</strong>
+          </a>
+          </div>
           <span>${new Date(c.created_at).toLocaleString()}</span>
         </div>
         <div class="comment-content">${escapeHtml(c.content)}</div>
@@ -223,7 +243,7 @@ async function loadComments(postId) {
   }
 }
 
-// ---------- Авторизация ----------
+//  Авторизация 
 function renderLogin(container) {
   container.innerHTML = `
     <div class="card" style="max-width:400px;margin:2rem auto;">
@@ -251,6 +271,144 @@ function renderLogin(container) {
       window.location.hash = '#home';
     } catch (err) {
       document.getElementById('loginError').textContent = err.message;
+    }
+  });
+}
+
+async function renderProfile(container, userId) {
+  const isOwn = !userId || (currentUser && userId == currentUser.id);
+
+  container.innerHTML = '<p>Загрузка...</p>';
+  try {
+    let user;
+    if (isOwn) {
+      user = await api('/auth/profile'); // свой полный профиль
+    } else {
+      user = await api(`/users/${userId}`); // публичный профиль (теперь с email и role)
+    }
+
+    const avatarUrl = user.avatar
+      ? `${API_BASE}/uploads/${user.avatar}`
+      : 'https://via.placeholder.com/150';
+
+    container.innerHTML = `
+      <div class="card" style="max-width:500px;margin:2rem auto;">
+        <div style="text-align:center;">
+          <img id="profileAvatarImg" src="${avatarUrl}" 
+               style="width:150px;height:150px;border-radius:50%;object-fit:cover;margin-bottom:1rem;">
+          <h3>${escapeHtml(user.username)}</h3>
+          <p style="color:var(--text-muted);">Email: ${escapeHtml(user.email)}</p>
+          <p style="color:var(--text-muted);">ID: ${user.id}</p>
+          <p style="color:var(--text-muted);">Роль: ${user.role === 'admin' ? 'Администратор' : 'Пользователь'}</p>
+          ${user.created_at ? `<p style="color:var(--text-muted);">На сайте с ${new Date(user.created_at).toLocaleDateString()}</p>` : ''}
+          ${isOwn ? `
+            <div id="profileActions" style="margin-top:1rem;">
+              <button id="btnEditProfile" class="btn-primary">Редактировать</button>
+            </div>
+            <div id="editProfileForm" class="hidden" style="margin-top:1rem;"></div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+
+    if (isOwn) {
+      document.getElementById('btnEditProfile').addEventListener('click', () => {
+        showEditProfileForm(user);
+      });
+    }
+  } catch (err) {
+    container.innerHTML = `<p class="error-message">Ошибка: ${escapeHtml(err.message)}</p>`;
+  }
+}
+
+
+function showEditProfileForm(user) {
+  const formDiv = document.getElementById('editProfileForm');
+  formDiv.classList.remove('hidden');
+  formDiv.innerHTML = `
+    <hr style="margin:1.5rem 0; border-color: var(--border);">
+    <form id="profileForm">
+      <input type="text" id="profileUsername" value="${escapeHtml(user.username)}" required>
+      <input type="email" id="profileEmail" value="${escapeHtml(user.email || '')}" required>
+      <button type="submit" class="btn-primary" style="width:100%">Сохранить изменения</button>
+    </form>
+    <hr style="margin:1.5rem 0; border-color: var(--border);">
+    <h4>Сменить пароль</h4>
+    <form id="passwordForm">
+      <input type="password" id="oldPassword" placeholder="Старый пароль" required>
+      <input type="password" id="newPassword" placeholder="Новый пароль" required>
+      <button type="submit" class="btn-primary" style="width:100%">Сменить пароль</button>
+    </form>
+    <div style="margin-top:1rem;">
+      <label class="btn-primary" style="cursor:pointer;display:inline-block;margin-right:10px;">
+        Загрузить аватар
+        <input type="file" id="avatarInput" accept="image/*" hidden>
+      </label>
+      <button id="btnRemoveAvatar" class="btn-danger" ${!user.avatar ? 'disabled' : ''}>Удалить аватар</button>
+    </div>
+  `;
+
+// Загрузка аватара
+document.getElementById('avatarInput')?.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('avatar', file);
+  const res = await fetch(`${API_BASE}/auth/profile/avatar`, {
+    method: 'PUT',
+    headers: { 'Authorization': authToken },
+    body: formData
+  });
+  if (res.ok) {
+    const data = await res.json();
+    const avatarImg = document.getElementById('profileAvatarImg');
+    if (avatarImg) avatarImg.src = API_BASE + '/uploads/' + data.avatar;
+    document.getElementById('btnRemoveAvatar').disabled = false;
+  } else {
+    alert('Ошибка загрузки');
+  }
+});
+
+// Удаление аватара
+document.getElementById('btnRemoveAvatar')?.addEventListener('click', async () => {
+  if (!confirm('Удалить аватар?')) return;
+  const res = await fetch(`${API_BASE}/auth/profile/avatar`, {
+    method: 'DELETE',
+    headers: { 'Authorization': authToken }
+  });
+  if (res.ok) {
+    const avatarImg = document.getElementById('profileAvatarImg');
+    if (avatarImg) avatarImg.src = 'https://via.placeholder.com/150';
+    document.getElementById('btnRemoveAvatar').disabled = true;
+  } else {
+    alert('Ошибка удаления');
+  }
+});
+
+  document.getElementById('profileForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('profileUsername').value.trim();
+    const email = document.getElementById('profileEmail').value.trim();
+    try {
+      await api('/auth/profile', 'PUT', { username, email });
+      alert('Профиль обновлён');
+      // Обновляем отображаемое имя на странице
+      document.querySelector('#editProfileForm').previousElementSibling.querySelector('h3').textContent = username;
+    } catch (err) {
+      alert('Ошибка: ' + err.message);
+    }
+  });
+
+  document.getElementById('passwordForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const oldPassword = document.getElementById('oldPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    try {
+      await api('/auth/profile/password', 'PUT', { oldPassword, newPassword });
+      alert('Пароль изменён');
+      document.getElementById('passwordForm').reset();
+    } catch (err) {
+      alert('Ошибка: ' + err.message);
     }
   });
 }
@@ -284,7 +442,7 @@ function renderRegister(container) {
   });
 }
 
-// ---------- Админ-панель ----------
+// Админ-панель 
 function renderAdmin(container) {
   if (!currentUser || currentUser.role !== 'admin') {
     container.innerHTML = '<h2>Доступ запрещён</h2>';
@@ -351,7 +509,7 @@ async function loadAdminUsers(container) {
   }
 }
 
-// ---------- Управление постами (с картинками и тегами) ----------
+//  Управление постами (с картинками и тегами) 
 async function loadAdminPosts(container) {
   container.innerHTML = '<p>Загрузка...</p>';
   try {
@@ -439,7 +597,7 @@ async function loadAdminPosts(container) {
   }
 }
 
-// ---------- Загрузка тегов в форму создания поста ----------
+//  Загрузка тегов в форму создания поста 
 async function loadTagsForForm() {
   const container = document.getElementById('tagsCheckboxes');
   if (!container) return;
@@ -459,7 +617,7 @@ async function loadTagsForForm() {
   }
 }
 
-// ---------- Управление тегами ----------
+//  Управление тегами 
 async function loadAdminTags(container) {
   container.innerHTML = '<p>Загрузка...</p>';
   try {

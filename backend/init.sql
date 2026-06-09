@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
   username VARCHAR(50) UNIQUE,
   email VARCHAR(100) UNIQUE,
   password VARCHAR(255),
+  avatar VARCHAR(255) DEFAULT NULL,
   role ENUM('user', 'admin') DEFAULT 'user',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -14,7 +15,7 @@ INSERT INTO users (username, email, password, role) VALUES
 ('admin', 'admin@example.com', 'admin', 'admin')
 ON DUPLICATE KEY UPDATE username=username;
 
--- Новости (с полем для картинки)
+-- Новости (с картинками)
 CREATE TABLE IF NOT EXISTS posts (
   id INT AUTO_INCREMENT PRIMARY KEY,
   title VARCHAR(255),

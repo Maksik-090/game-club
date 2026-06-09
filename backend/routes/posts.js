@@ -5,7 +5,7 @@ const auth = require("../middleware/auth");
 // Получить все посты (с именем автора)
 router.get("/", (req, res) => {
   db.query(
-    `SELECT p.*, u.username AS author_name
+    `SELECT p.*, u.username AS author_name, u.avatar AS author_avatar
      FROM posts p
      LEFT JOIN users u ON p.author_id = u.id
      ORDER BY p.created_at DESC`,
@@ -19,7 +19,7 @@ router.get("/", (req, res) => {
 // Получить один пост (с автором)
 router.get("/:id", (req, res) => {
   db.query(
-    `SELECT p.*, u.username AS author_name
+    `SELECT p.*, u.username AS author_name, u.avatar AS author_avatar
      FROM posts p
      LEFT JOIN users u ON p.author_id = u.id
      WHERE p.id = ?`,

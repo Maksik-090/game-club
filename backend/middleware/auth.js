@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const SECRET = "supersecret";
 
 function auth(req, res, next) {
   const token = req.headers.authorization;
@@ -6,7 +7,7 @@ function auth(req, res, next) {
   if (!token) return res.sendStatus(401);
 
   try {
-    const decoded = jwt.verify(token, "SECRET");
+    const decoded = jwt.verify(token, SECRET);
     req.user = decoded;
     next();
   } catch {

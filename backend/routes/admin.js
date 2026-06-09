@@ -1,6 +1,8 @@
 const router = require("express").Router();
 const db = require("../db");
 const auth = require("../middleware/auth");
+const fs = require('fs');
+const path = require('path');
 
 // Middleware для проверки админа
 function adminOnly(req, res, next) {
@@ -16,10 +18,17 @@ router.get("/users", auth, adminOnly, (req, res) => {
   });
 });
 
-router.delete("/users/:id", auth, adminOnly, (req, res) => {
-  db.query("DELETE FROM users WHERE id = ?", [req.params.id], (err) => {
+router.delete('/users/:id', auth, adminOnly, (req, res) => {
+  db.query('SELECT avatar FROM users WHERE id = ?', [req.params.id], (err, result) => {
     if (err) return res.status(500).json(err);
-    res.json("User deleted");
+    const avatar = result[0]?.avatar;
+    if (avatar) {
+      fs.unlink(path.join(__dirname, '..', 'uploads', avatar), () => {});
+    }
+    db.query('DELETE FROM users WHERE id = ?', [req.params.id], (err2) => {
+      if (err2) return res.status(500).json(err2);
+      res.json('User deleted');
+    });
   });
 });
 

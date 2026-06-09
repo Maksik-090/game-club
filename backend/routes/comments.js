@@ -18,7 +18,7 @@ router.post("/", auth, (req, res) => {
 // Получить комментарии поста
 router.get("/:postId", (req, res) => {
   db.query(
-    `SELECT c.*, u.username
+    `SELECT c.*, u.username, u.avatar
      FROM comments c
      JOIN users u ON c.user_id = u.id
      WHERE c.post_id = ?
