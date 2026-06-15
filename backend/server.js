@@ -53,6 +53,8 @@ app.use("/posts", require("./routes/posts"));
 app.use("/comments", require("./routes/comments"));
 app.use("/admin", require("./routes/admin"));
 app.use("/users", require("./routes/users"));
+app.use("/admin/lobbies", require("./routes/admin_lobbies"));
+app.use("/lobbies", require("./routes/lobbies"));
 
 // SPA fallback
 app.get("*", (req, res) => {

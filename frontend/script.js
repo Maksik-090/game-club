@@ -81,6 +81,7 @@ function renderPage() {
   else if (hash === 'profile') renderProfile(app, null);
   else if (hash.startsWith('profile/')) renderProfile(app, hash.split('/')[1]);
   else if (hash === 'admin') renderAdmin(app);
+  else if (hash === 'lobby') renderLobby(app);
   else app.innerHTML = '<h2>Страница не найдена</h2>';
 }
 
@@ -454,6 +455,7 @@ function renderAdmin(container) {
       <div class="admin-tab active" data-tab="users">Пользователи</div>
       <div class="admin-tab" data-tab="posts">Новости</div>
       <div class="admin-tab" data-tab="tags">Теги</div>
+      <div class="admin-tab" data-tab="lobby">Лобби</div>
     </div>
     <div id="adminContent"></div>
   `;
@@ -466,6 +468,13 @@ function renderAdmin(container) {
     if (tabName === 'users') loadAdminUsers(contentDiv);
     else if (tabName === 'posts') loadAdminPosts(contentDiv);
     else if (tabName === 'tags') loadAdminTags(contentDiv);
+    else if (tabName === 'lobby') {
+      if (typeof loadAdminLobby === 'function') {
+        loadAdminLobby(contentDiv);
+      } else {
+        contentDiv.innerHTML = '<p>Модуль лобби не загружен</p>';
+      }
+    }
   }
   tabs.forEach(t => t.addEventListener('click', () => switchTab(t)));
   switchTab(tabs[0]);
