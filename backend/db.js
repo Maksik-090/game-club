@@ -2,8 +2,8 @@ const mysql = require('mysql2');
 
 const connection = mysql.createConnection({
   host: 'db',
-  user: 'gameuser',     //  root
-  password: 'gamepass', // ...
+  user: 'gameuser',     
+  password: 'gamepass', 
   database: 'gameclub'
 });
 

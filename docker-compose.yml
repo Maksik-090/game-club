@@ -30,8 +30,8 @@ services:
         condition: service_healthy
     environment:
       DB_HOST: db
-      DB_USER: user
-      DB_PASSWORD: userpassword
+      DB_USER: root
+      DB_PASSWORD: root
       DB_NAME: gameclub
     ports:
       - "3000:3000"

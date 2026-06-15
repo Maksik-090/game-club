@@ -1,4 +1,4 @@
-// Основная функция, вызываемая при выборе вкладки "Лобби"
+//Лобби
 async function loadAdminLobby(container) {
   container.innerHTML = `
     <h3>Управление лобби</h3>

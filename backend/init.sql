@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS games (
 CREATE TABLE IF NOT EXISTS platforms (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(50) NOT NULL,
-  icon VARCHAR(255)  -- иконка (можно хранить как текст или путь к картинке)
+  icon VARCHAR(255)  -- иконка
 );
 
 -- Способы коммуникации (справочник)
