@@ -34,16 +34,14 @@ app.use("/uploads", express.static(uploadDir));
 app.use(express.static(path.join(__dirname, "frontend")));
 
 // ПОДКЛЮЧЕНИЕ К БД
-const db = mysql.createConnection({
+const db = mysql.createPool({
   host: process.env.DB_HOST || "db",
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "root",
-  database: process.env.DB_NAME || "gameclub"
-});
-
-db.connect((err) => {
-  if (err) throw err;
-  console.log("MySQL connected");
+  database: process.env.DB_NAME || "gameclub",
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
 //  РОУТЫ
