@@ -11,10 +11,6 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO users (username, email, password, role) VALUES
-('admin', 'admin@example.com', 'admin', 'admin')
-ON DUPLICATE KEY UPDATE username=username;
-
 -- Новости (с картинками)
 CREATE TABLE IF NOT EXISTS posts (
   id INT AUTO_INCREMENT PRIMARY KEY,

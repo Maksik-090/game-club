@@ -88,12 +88,31 @@ router.post("/", auth, (req, res, next) => {
   );
 });
 
-// Удалить пост (только админ)
+// Удалить пост (только админ) – с удалением файла изображения
 router.delete("/:id", auth, (req, res) => {
   if (req.user.role !== "admin") return res.sendStatus(403);
-  db.query("DELETE FROM posts WHERE id = ?", [req.params.id], (err) => {
+
+  // Сначала получаем пост, чтобы узнать имя файла
+  db.query("SELECT image FROM posts WHERE id = ?", [req.params.id], (err, result) => {
     if (err) return res.status(500).json(err);
-    res.json("Post deleted");
+    if (result.length === 0) return res.sendStatus(404);
+
+    const image = result[0].image;
+    
+    // Удаляем запись из БД
+    db.query("DELETE FROM posts WHERE id = ?", [req.params.id], (err2) => {
+      if (err2) return res.status(500).json(err2);
+
+      // Если было изображение, удаляем файл
+      if (image) {
+        const filePath = path.join(__dirname, "..", "uploads", image);
+        fs.unlink(filePath, (err3) => {
+          if (err3) console.error("Ошибка удаления файла:", err3.message);
+        });
+      }
+
+      res.json("Post deleted");
+    });
   });
 });
 
