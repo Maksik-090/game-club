@@ -1,6 +1,9 @@
 const router = require("express").Router();
 const db = require("../db");
 const auth = require("../middleware/auth");
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 // Получить все посты (с именем автора)
 router.get("/", (req, res) => {
@@ -46,65 +49,69 @@ router.get("/:id/tags", (req, res) => {
   );
 });
 
-// Создать пост (с картинкой и тегами)
-router.post("/", auth, (req, res, next) => {
-  req.app.locals.upload.single('image')(req, res, next);
-}, (req, res) => {
+//  Создать пост (с картинкой и тегами) 
+const uploadImage = require('../utils/uploadImage');
+const uploadPostImage = multer({ storage: multer.memoryStorage() });
+
+router.post("/", auth, uploadPostImage.single('image'), async (req, res) => {
   const { title, content, tags } = req.body;
-  const image = req.file ? req.file.filename : null;
+  let imageValue = null;
 
-  db.query(
-    "INSERT INTO posts (title, content, image, author_id) VALUES (?, ?, ?, ?)",
-    [title, content, image, req.user.id],
-    (err, result) => {
-      if (err) return res.status(500).json(err);
-      const postId = result.insertId;
+  try {
+    if (req.file) {
+      imageValue = await uploadImage(req.file, 'posts');
+    }
 
-      // Если переданы теги, добавляем связи
-      if (tags) {
-        let tagIds;
-        try {
-          tagIds = typeof tags === 'string' ? JSON.parse(tags) : tags;
-        } catch (e) {
-          return res.status(400).json("Invalid tags format");
-        }
-        if (Array.isArray(tagIds) && tagIds.length > 0) {
-          const values = tagIds.map(tagId => [postId, tagId]);
-          db.query(
-            "INSERT INTO post_tags (post_id, tag_id) VALUES ?",
-            [values],
-            (err2) => {
+    db.query(
+      "INSERT INTO posts (title, content, image, author_id) VALUES (?, ?, ?, ?)",
+      [title, content, imageValue, req.user.id],
+      (err, result) => {
+        if (err) return res.status(500).json(err);
+        const postId = result.insertId;
+
+        // Обработка тегов (без изменений)
+        if (tags) {
+          let tagIds;
+          try {
+            tagIds = typeof tags === 'string' ? JSON.parse(tags) : tags;
+          } catch (e) {
+            return res.status(400).json("Invalid tags format");
+          }
+          if (Array.isArray(tagIds) && tagIds.length > 0) {
+            const values = tagIds.map(tagId => [postId, tagId]);
+            db.query("INSERT INTO post_tags (post_id, tag_id) VALUES ?", [values], (err2) => {
               if (err2) return res.status(500).json(err2);
               res.json({ id: postId, message: "Post created with tags" });
-            }
-          );
+            });
+          } else {
+            res.json({ id: postId, message: "Post created" });
+          }
         } else {
           res.json({ id: postId, message: "Post created" });
         }
-      } else {
-        res.json({ id: postId, message: "Post created" });
       }
-    }
-  );
+    );
+  } catch (err) {
+    console.error(err);
+    res.status(500).json(err.message);
+  }
 });
 
-// Удалить пост (только админ) – с удалением файла изображения
+//  Удалить пост (только админ) – с удалением файла изображения 
 router.delete("/:id", auth, (req, res) => {
   if (req.user.role !== "admin") return res.sendStatus(403);
 
-  // Сначала получаем пост, чтобы узнать имя файла
   db.query("SELECT image FROM posts WHERE id = ?", [req.params.id], (err, result) => {
     if (err) return res.status(500).json(err);
     if (result.length === 0) return res.sendStatus(404);
 
     const image = result[0].image;
-    
-    // Удаляем запись из БД
+
     db.query("DELETE FROM posts WHERE id = ?", [req.params.id], (err2) => {
       if (err2) return res.status(500).json(err2);
 
-      // Если было изображение, удаляем файл
-      if (image) {
+      // Если было изображение и оно не URL из облака – удаляем локальный файл
+      if (image && !image.startsWith('http')) {
         const filePath = path.join(__dirname, "..", "uploads", image);
         fs.unlink(filePath, (err3) => {
           if (err3) console.error("Ошибка удаления файла:", err3.message);

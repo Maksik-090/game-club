@@ -8,6 +8,8 @@ const fs = require("fs");
 const multer = require("multer");
 const db = require("./db");
 
+const IMGBB_API_KEY = process.env.IMGBB_API_KEY || null;
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -33,8 +35,6 @@ app.locals.upload = upload;
 
 app.use("/uploads", express.static(uploadDir));
 app.use(express.static(path.join(__dirname, "frontend")));
-
-// ПОДКЛЮЧЕНИЕ К БД
 
 
 //  РОУТЫ

@@ -70,6 +70,34 @@ router.put("/games/:id", auth, adminOnly, (req, res, next) => {
   }
 });
 
+
+const uploadImage = require('../utils/uploadImage');
+const uploadGameCover = multer({ storage: multer.memoryStorage() });
+
+router.post('/games', auth, adminOnly, uploadGameCover.single('cover'), async (req, res) => {
+  const { name, max_players } = req.body;
+  if (!name) return res.status(400).json("Name is required");
+
+  try {
+    let coverValue = null;
+    if (req.file) {
+      coverValue = await uploadImage(req.file, 'games');
+    }
+    db.query(
+      "INSERT INTO games (name, cover, max_players) VALUES (?, ?, ?)",
+      [name, coverValue, max_players || 10],
+      (err) => {
+        if (err) return res.status(500).json(err);
+        res.json("Game created");
+      }
+    );
+  } catch (err) {
+    console.error(err);
+    res.status(500).json(err.message);
+  }
+});
+
+
 // Удалить игру
 router.delete("/games/:id", auth, adminOnly, (req, res) => {
   const gameId = req.params.id;

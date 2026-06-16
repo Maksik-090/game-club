@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
   avatar VARCHAR(255) DEFAULT NULL,
   role ENUM('user', 'admin') DEFAULT 'user',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Новости (с картинками)
 CREATE TABLE IF NOT EXISTS posts (
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS posts (
   author_id INT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE SET NULL
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Комментарии
 CREATE TABLE IF NOT EXISTS comments (
@@ -31,13 +31,13 @@ CREATE TABLE IF NOT EXISTS comments (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Теги
 CREATE TABLE IF NOT EXISTS tags (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(50) UNIQUE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Связь постов и тегов
 CREATE TABLE IF NOT EXISTS post_tags (
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS post_tags (
   PRIMARY KEY (post_id, tag_id),
   FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
   FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Игры (добавляются админом)
 CREATE TABLE IF NOT EXISTS games (
@@ -55,20 +55,20 @@ CREATE TABLE IF NOT EXISTS games (
   cover VARCHAR(255),
   max_players INT DEFAULT 10,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Платформы (справочник, заполняется админом)
 CREATE TABLE IF NOT EXISTS platforms (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(50) NOT NULL,
   icon VARCHAR(255)  -- иконка
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Способы коммуникации (справочник)
 CREATE TABLE IF NOT EXISTS communication_methods (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(50) NOT NULL
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Игровые комнаты
 CREATE TABLE IF NOT EXISTS rooms (
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS rooms (
   comment TEXT,
   FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
   FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Участники комнаты
 CREATE TABLE IF NOT EXISTS room_players (
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS room_players (
   joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Связь комнаты и платформ
 CREATE TABLE IF NOT EXISTS room_platforms (
@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS room_platforms (
   PRIMARY KEY (room_id, platform_id),
   FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
   FOREIGN KEY (platform_id) REFERENCES platforms(id) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Связь комнаты и способов коммуникации (со ссылкой)
 CREATE TABLE IF NOT EXISTS room_communications (
@@ -112,4 +112,4 @@ CREATE TABLE IF NOT EXISTS room_communications (
   link VARCHAR(255) NOT NULL,
   FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
   FOREIGN KEY (method_id) REFERENCES communication_methods(id) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
