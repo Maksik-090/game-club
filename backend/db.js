@@ -1,19 +1,13 @@
-const mysql = require('mysql2');
+const mysql = require("mysql2");
 
-const connection = mysql.createConnection({
-  host: 'db',
-  user: 'gameuser',     
-  password: 'gamepass', 
-  database: 'gameclub'
+const pool = mysql.createPool({
+  host: process.env.DB_HOST || "db",
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "root",
+  database: process.env.DB_NAME || "gameclub",
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
-
-connection.connect(err => {
-  if (err) {
-    console.log('X Ошибка подключения:', err);
-  } else {
-    console.log('YYY MySQL подключен');
-  }
-});
-
-module.exports = connection;
+module.exports = pool;

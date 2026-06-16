@@ -6,6 +6,7 @@ const bcrypt = require("bcrypt");
 const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
+const db = require("./db");
 
 const app = express();
 app.use(cors());
@@ -34,15 +35,7 @@ app.use("/uploads", express.static(uploadDir));
 app.use(express.static(path.join(__dirname, "frontend")));
 
 // ПОДКЛЮЧЕНИЕ К БД
-const db = mysql.createPool({
-  host: process.env.DB_HOST || "db",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "root",
-  database: process.env.DB_NAME || "gameclub",
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
+
 
 //  РОУТЫ
 app.use("/auth", require("./routes/auth"));
@@ -53,18 +46,13 @@ app.use("/users", require("./routes/users"));
 app.use("/admin/lobbies", require("./routes/admin_lobbies"));
 app.use("/lobbies", require("./routes/lobbies"));
 
+
 // SPA fallback
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "frontend", "index.html"));
 });
 
-// ++++++++++++++++++++++++++++
-app.get("/db-test", (req, res) => {
-  db.query("SELECT 1", (err, result) => {
-    if (err) return res.json({ status: "error", error: err.message });
-    res.json({ status: "ok" });
-  });
-});
+
 
 // ЗАПУСК
 const PORT = process.env.PORT || 3000;
