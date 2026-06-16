@@ -60,6 +60,14 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "frontend", "index.html"));
 });
 
+app.get("/db-test", (req, res) => {
+  db.query("SELECT 1", (err, result) => {
+    if (err) return res.json({ status: "error", error: err.message });
+    res.json({ status: "ok", tables: Object.keys(db) });
+  });
+});
+
+
 // ЗАПУСК
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

@@ -21,8 +21,8 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .                       # корень проекта
+      dockerfile: backend/Dockerfile
     container_name: game-club-backend
     restart: always
     depends_on:
@@ -37,7 +37,7 @@ services:
       - "3000:3000"
     volumes:
       - ./frontend:/app/frontend
-      - ./backend/uploads:/app/uploads   # чтобы файлы оставались на хосте
+      - ./backend/uploads:/app/uploads
     command: >
       sh -c "npm install && npm start"
 
