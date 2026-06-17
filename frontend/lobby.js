@@ -67,7 +67,7 @@ async function loadRooms() {
       let slotsHtml = '';
       // Реальные аватарки всех участников
       players.forEach(p => {
-        slotsHtml += `<img src="${p.avatar ? API_BASE + '/uploads/' + p.avatar : 'https://via.placeholder.com/32'}" 
+        slotsHtml += `<img src="${imageUrl(p.avatar)}" 
         style="width:32px;height:32px;border-radius:50%;object-fit:cover;" title="${escapeHtml(p.username)}">`;
       });
       // Пустые слоты
@@ -78,7 +78,7 @@ async function loadRooms() {
       return `
         <div class="card" style="margin-bottom:1rem;">
           <div style="display:flex; align-items:center; gap:12px;">
-            ${room.game_cover ? `<img src="${API_BASE}/uploads/${room.game_cover}" style="width:64px;height:64px;border-radius:12px;object-fit:cover;">` : ''}
+            ${room.game_cover ? `<img src="${imageUrl(room.game_cover)}" style="width:64px;height:64px;border-radius:12px;object-fit:cover;">` : ''}
             <div style="flex:1;">
               <strong>${escapeHtml(room.game_name)}</strong>
               <div style="font-size:0.9rem; color:var(--text-muted);">
@@ -164,7 +164,7 @@ async function showRoomDetail(roomId) {
 
     const playersHtml = players.map(p => `
       <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
-        <img src="${p.avatar ? API_BASE + '/uploads/' + p.avatar : 'https://via.placeholder.com/24'}" 
+        <img src="${imageUrl(p.avatar)}"  
              style="width:24px;height:24px;border-radius:50%;">
         <span>${escapeHtml(p.username)}</span>
       </div>

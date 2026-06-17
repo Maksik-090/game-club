@@ -12,6 +12,12 @@ if (localStorage.getItem('authToken')) {
   } catch (e) {}
 }
 
+function imageUrl(path) {
+  if (!path) return 'https://via.placeholder.com/150';
+  if (path.startsWith('http')) return path;
+  return API_BASE + '/uploads/' + path;
+}
+
 // Универсальная функция запросов 
 async function api(url, method = 'GET', body = null, isFormData = false) {
   const headers = {};
@@ -97,7 +103,7 @@ async function renderHome(container) {
     }
     list.innerHTML = posts.map(p => {
       const imageHtml = p.image
-        ? `<img src="${API_BASE}/uploads/${p.image}" style="max-width:100%; border-radius:8px; margin-bottom:1rem;" alt="Изображение">`
+        ? `<img src="${imageUrl(p.image)}" style="max-width:100%; border-radius:8px; margin-bottom:1rem;" alt="Изображение">`
         : '';
       return `
         <div class="card">
@@ -105,7 +111,7 @@ async function renderHome(container) {
           <a href="#post/${p.id}" class="post-title">${escapeHtml(p.title)}</a>
           <div class="post-meta" style="display:flex; align-items:center; gap:8px;">
           <a href="#profile/${p.author_id}" style="display:flex; align-items:center; gap:8px; text-decoration:none; color:inherit;"> 
-          ${p.author_avatar ? `<img src="${API_BASE}/uploads/${p.author_avatar}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;">` : '<div style="width:24px;height:24px;border-radius:50%;background:var(--border);"></div>'}
+          ${p.author_avatar ? `<img src="${imageUrl(p.author_avatar)}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;">` : '<div style="width:24px;height:24px;border-radius:50%;background:var(--border);"></div>'}
           <span>${escapeHtml(p.author_name || 'Автор #' + p.author_id)}</span>
           </a>
           <span>• ${new Date(p.created_at).toLocaleString()}</span>
@@ -132,7 +138,7 @@ async function renderPost(container, postId) {
     if (!post) throw new Error("Новость не найдена");
 
     const imageHtml = post.image
-      ? `<img src="${API_BASE}/uploads/${post.image}" style="max-width:100%; border-radius:12px; margin-bottom:1.5rem;" alt="Изображение">`
+      ? `<img src="${imageUrl(post.image)}" style="max-width:100%; border-radius:12px; margin-bottom:1.5rem;" alt="Изображение">`
       : '';
     const tagsHtml = tags && tags.length
       ? `<div class="tags" style="margin-bottom:1rem;">${tags.map(t => `<span class="tag" style="background:var(--primary); padding:2px 8px; border-radius:4px; margin-right:6px;">${escapeHtml(t.name)}</span>`).join('')}</div>`
@@ -144,7 +150,7 @@ async function renderPost(container, postId) {
         ${tagsHtml}
         <div class="post-meta" style="display:flex; align-items:center; gap:8px;"> 
         <a href="#profile/${post.author_id}" style="display:flex; align-items:center; gap:8px; text-decoration:none; color:inherit;">
-          ${post.author_avatar ? `<img src="${API_BASE}/uploads/${post.author_avatar}" style="width:24px;height:24px;border-radius:50%;">` : ''}
+          ${post.author_avatar ? `<img src="${imageUrl(post.author_avatar)}" style="width:24px;height:24px;border-radius:50%;">` : ''}
           <span>Автор: ${escapeHtml(post.author_name || 'Автор #' + post.author_id)}</span>
         </a>
         <span>• ${new Date(post.created_at).toLocaleString()}</span>
@@ -192,7 +198,7 @@ async function loadComments(postId) {
         <div class="comment-header">
           <div style="display:flex; align-items:center; gap:8px;">
           <a href="#profile/${c.user_id}" style="display:flex; align-items:center; gap:8px; text-decoration:none; color:inherit;">
-          ${c.avatar ? `<img src="${API_BASE}/uploads/${c.avatar}" style="width:20px;height:20px;border-radius:50%;">` : '<div style="width:20px;height:20px;border-radius:50%;background:var(--border);"></div>'}
+          ${c.avatar ? `<img src="${imageUrl(c.avatar)}" style="width:20px;height:20px;border-radius:50%;">` : '<div style="width:20px;height:20px;border-radius:50%;background:var(--border);"></div>'}
           <strong>${escapeHtml(c.username || 'User #' + c.user_id)}</strong>
           </a>
           </div>
@@ -288,9 +294,7 @@ async function renderProfile(container, userId) {
       user = await api(`/users/${userId}`); // публичный профиль (теперь с email и role)
     }
 
-    const avatarUrl = user.avatar
-      ? `${API_BASE}/uploads/${user.avatar}`
-      : 'https://via.placeholder.com/150';
+    const avatarUrl = imageUrl(user.avatar);
 
     container.innerHTML = `
       <div class="card" style="max-width:500px;margin:2rem auto;">
@@ -363,7 +367,7 @@ document.getElementById('avatarInput')?.addEventListener('change', async (e) => 
   if (res.ok) {
     const data = await res.json();
     const avatarImg = document.getElementById('profileAvatarImg');
-    if (avatarImg) avatarImg.src = API_BASE + '/uploads/' + data.avatar;
+    if (avatarImg) avatarImg.src = imageUrl(data.avatar);
     document.getElementById('btnRemoveAvatar').disabled = false;
   } else {
     alert('Ошибка загрузки');
