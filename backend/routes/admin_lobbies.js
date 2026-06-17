@@ -73,7 +73,6 @@ router.put("/games/:id", auth, adminOnly, (req, res, next) => {
 });
 
 
-const uploadImage = require('../utils/uploadImage');
 const uploadGameCover = multer({ storage: multer.memoryStorage() });
 
 router.post('/games', auth, adminOnly, uploadGameCover.single('cover'), async (req, res) => {
