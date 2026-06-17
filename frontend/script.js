@@ -55,17 +55,6 @@ function updateNav() {
     btnLogout.classList.add('hidden');
     navAdmin.classList.add('hidden');
   }
-  const burgerBtn = document.getElementById('burgerBtn');
-  const mainNav = document.getElementById('mainNav');
-  if (burgerBtn && mainNav) {
-   burgerBtn.addEventListener('click', () => {
-     mainNav.classList.toggle('show');
-   });
-   // Закрывать меню при клике на ссылку
-   mainNav.querySelectorAll('a, button').forEach(el => {
-     el.addEventListener('click', () => mainNav.classList.remove('show'));
-   });
-  }
 }
 
 function logout() {
@@ -671,6 +660,41 @@ async function loadAdminTags(container) {
     container.innerHTML = `<p class="error-message">Ошибка: ${escapeHtml(err.message)}</p>`;
   }
 }
+
+// Гамбургер-меню
+function initBurgerMenu() {
+  const burgerBtn = document.getElementById('burgerBtn');
+  const mainNav = document.getElementById('mainNav');
+  const overlay = document.getElementById('overlay');
+
+  if (!burgerBtn || !mainNav || !overlay) return;
+
+  function openMenu() {
+    mainNav.classList.add('show');
+    overlay.classList.add('show');
+  }
+
+  function closeMenu() {
+    mainNav.classList.remove('show');
+    overlay.classList.remove('show');
+  }
+
+  burgerBtn.addEventListener('click', () => {
+    if (mainNav.classList.contains('show')) {
+      closeMenu();
+    } else {
+      openMenu();
+    }
+  });
+
+  overlay.addEventListener('click', closeMenu);
+  mainNav.querySelectorAll('a, button').forEach(el => {
+    el.addEventListener('click', closeMenu);
+  });
+}
+
+// Запускаем при загрузке
+document.addEventListener('DOMContentLoaded', initBurgerMenu);
 
 // Экранирование HTML
 function escapeHtml(text) {
