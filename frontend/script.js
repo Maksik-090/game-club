@@ -55,6 +55,17 @@ function updateNav() {
     btnLogout.classList.add('hidden');
     navAdmin.classList.add('hidden');
   }
+  const burgerBtn = document.getElementById('burgerBtn');
+  const mainNav = document.getElementById('mainNav');
+  if (burgerBtn && mainNav) {
+   burgerBtn.addEventListener('click', () => {
+     mainNav.classList.toggle('show');
+   });
+   // Закрывать меню при клике на ссылку
+   mainNav.querySelectorAll('a, button').forEach(el => {
+     el.addEventListener('click', () => mainNav.classList.remove('show'));
+   });
+  }
 }
 
 function logout() {
