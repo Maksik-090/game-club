@@ -3,6 +3,8 @@ const db = require("../db");
 const auth = require("../middleware/auth");
 const fs = require("fs");
 const path = require("path");
+const multer = require('multer');
+const uploadImage = require('../utils/uploadImage');
 
 // Проверка прав администратора
 function adminOnly(req, res, next) {
